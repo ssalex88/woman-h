@@ -61,3 +61,19 @@ def login(client, email="ana@example.test"):
     assert response.status_code == 200
     return response.json()
 
+
+@pytest.fixture
+def store(tmp_path, monkeypatch):
+    from app.config import settings
+    from app.storage import LocalStorage, get_storage
+    storage = LocalStorage(settings().model_copy(update={"storage_root": tmp_path}))
+    app.dependency_overrides[get_storage] = lambda: storage
+    monkeypatch.setattr("app.storage.get_storage", lambda: storage)
+    yield storage
+    app.dependency_overrides.pop(get_storage, None)
+
+
+@pytest.fixture
+def demo_record(store):
+    from app.seed import seed_demo_case
+    return seed_demo_case()
