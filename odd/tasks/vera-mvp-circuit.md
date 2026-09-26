@@ -44,6 +44,11 @@ Baseline: 98 passed / 1 skipped (backend), 22 passed (frontend).
 - [x] T10 Frontend Institutional.tsx: counters, table, detail, assign, status, checklist
 - [x] T11 README simplification
 - [x] T12 End-to-end demo check
+- [x] T13 PR #1 review fixes (accepted by user 2026-09-25):
+  - [x] R1 Fixture only in demo mode and only when every quote matches (prevented invented facts on real data)
+  - [x] R2 Submit rejects drafts that no longer match the confirmed timeline; Share shows it
+  - [x] R3 Share preselects only files that still exist
+  - [x] R4 Demo seed repairs a partially created case
 
 ## Acceptance criteria
 SPEC §54 checklist.
@@ -68,6 +73,10 @@ SPEC §54 checklist.
   items → confirmed → draft with honest gaps → V-001 → institution list/detail/assign/checklist; copied hashes match;
   reviewer gets 404 on every private route. Screens reviewed manually.
 - Known cosmetic: 🔒🔗📎 render as boxes in headless Chromium on WSL (no emoji font); fine in normal browsers.
+
+- T13 review fixes: each test observed RED on pre-fix code, then GREEN. Commits 3c6ee25, 087cf85, e5f5817, ac2c96f,
+  each verified in an isolated worktree. Final: pytest PostgreSQL 120 passed, SQLite 119 passed / 1 skipped; vitest 27 (5/5); build OK.
+- GitHub Actions: enabled but no runs trigger on the repo (not even the initial import); not investigated/changed.
 
 ## Next step
 Human review + commit split (not done: user did not request commits). P1 candidates: AuditEvent, Claude API adapter
