@@ -90,10 +90,11 @@ def get_timeline_adapter() -> TimelineAdapter:
     return getattr(import_module(module), name)(settings())
 
 
-def fallback_chain(adapter: TimelineAdapter) -> list[TimelineAdapter]:
-    """Configured adapter first, then the prepared fixture, then deterministic extraction."""
+def fallback_chain(adapter: TimelineAdapter, demo: bool) -> list[TimelineAdapter]:
+    """Configured adapter first, then the prepared fixture (demo only), then deterministic extraction."""
     chain = [adapter]
     for fallback in (FixtureAdapter(), ExtractiveAdapter()):
         if not any(type(item) is type(fallback) for item in chain):
             chain.append(fallback)
-    return chain
+    # The fixture describes the synthetic demo case; outside demo mode it must never reach real people.
+    return [item for item in chain if demo or item.mode != FixtureAdapter.mode]

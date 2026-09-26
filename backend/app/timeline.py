@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from .accounts import AccountInput, owned_account
+from .config import settings
 from .db import get_db
 from .files import owned_file
 from .models import Account, PrivateRecord, RecordFile, Timeline, User
@@ -140,15 +141,18 @@ def squash(text):
 
 
 def cite(item, sources):
-    """Only keep source IDs that exist and quotes that appear literally in some collected fragment."""
+    """Only keep source IDs that exist and quotes that appear literally in some collected fragment.
+    Returns the cited sources, the verified quotes and how many quotes could not be verified."""
     by_id = {s['id']: s for s in sources}
     ids = [key for key in item.get('source_ids') or [] if type(key) is str and key in by_id]
-    quotes = []
+    quotes, missing = [], 0
     for quote in item.get('support_quotes') or []:
         if type(quote) is not str or not quote.strip() or len(quote) > 2000:
+            missing += 1
             continue
         hits = [s['id'] for s in sources if squash(quote) in squash(s['quote'])]
         if not hits:
+            missing += 1
             continue
         quotes.append(quote.strip())
         if not set(hits) & set(ids):
@@ -156,7 +160,7 @@ def cite(item, sources):
     ids = list(dict.fromkeys(ids))
     if ids and not quotes:
         quotes = [by_id[key]['quote'] for key in ids]
-    return [by_id[key] for key in ids], quotes
+    return [by_id[key] for key in ids], quotes, missing
 
 
 def checked_date(item, cited):
@@ -180,14 +184,15 @@ def checked_date(item, cited):
     return {"date_kind": "unknown", "event_date": None, "approximate_date": None}
 
 
-def verify(proposal, sources):
+def verify(proposal, sources, strict=False):
+    """strict: every quote must be verified, otherwise the whole item is dropped (used for prepared answers)."""
     if not isinstance(proposal, dict):
         raise ValueError("Propuesta inválida")
     events, items, dropped = [], [], 0
     for raw in (proposal.get('events') or [])[:MAX_EVENTS]:
-        cited, quotes = cite(raw, sources) if isinstance(raw, dict) else ([], [])
+        cited, quotes, missing = cite(raw, sources) if isinstance(raw, dict) else ([], [], 0)
         description = raw.get('description') if isinstance(raw, dict) else None
-        if not cited or type(description) is not str or not 0 < len(description.strip()) <= 2000 or FORBIDDEN.search(description):
+        if not cited or (strict and missing) or type(description) is not str or not 0 < len(description.strip()) <= 2000 or FORBIDDEN.search(description):
             dropped += 1
             continue
         events.append({"description": description.strip(), **checked_date(raw, cited), "sources": cited, "support_quotes": quotes})
@@ -195,7 +200,10 @@ def verify(proposal, sources):
         if not isinstance(raw, dict) or raw.get('kind') not in ("date_inconsistency", "possible_relation"):
             continue
         message = raw.get('message')
-        cited, _ = cite(raw, sources)
+        cited, _, missing = cite(raw, sources)
+        if strict and missing:
+            dropped += 1
+            continue
         if cited and type(message) is str and 0 < len(message.strip()) <= 500 and not FORBIDDEN.search(message):
             items.append(review_item(raw['kind'], message.strip(), [s['id'] for s in cited]))
     return events, items, dropped
@@ -225,12 +233,16 @@ def analyze(record_id: UUID, data: Revision, user: User = Depends(current_user),
     sources, warnings, files = collect(db, record_id, store)
     payload = [{"id": s['id'], "text": s['quote']} for s in sources]
     proposed, items, dropped, mode = None, [], 0, adapter.mode
-    for candidate in fallback_chain(adapter):
+    for candidate in fallback_chain(adapter, settings().demo_enabled):
+        # A prepared answer only applies to the exact data it was written for: all or nothing.
+        strict = candidate.mode == "fixture"
         try:
-            proposed, items, dropped = verify(candidate.propose(payload), sources)
+            events, found, lost = verify(candidate.propose(payload), sources, strict)
         except Exception:
             continue
-        mode = candidate.mode
+        if strict and lost:
+            continue
+        proposed, items, dropped, mode = events, found, lost, candidate.mode
         if proposed or not sources:
             break
     if dropped:

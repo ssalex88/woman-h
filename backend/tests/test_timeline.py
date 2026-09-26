@@ -134,3 +134,22 @@ def test_another_person_cannot_analyze_or_read_the_timeline(client, demo_record)
     login(client, "bea@example.test")
     assert client.get(f"/api/records/{demo_record}/timeline").status_code == 404
     assert client.post(f"/api/records/{demo_record}/timeline/analyze", json={"revision": 0}).status_code == 404
+
+
+def test_fixture_never_applies_to_partially_matching_real_data(client):
+    login(client)
+    record = own_record(client, "Le dije que no. ¿Ya pensaste lo de la cena? Otro hecho ficticio.")
+    state = analyze(client, record)
+    assert state["mode"] == "extractive"
+    descriptions = " ".join(event["description"] for event in state["events"])
+    assert "sala 3" not in descriptions and "22:43" not in descriptions
+    assert all(event["description"] in "Le dije que no. ¿Ya pensaste lo de la cena? Otro hecho ficticio."
+               for event in state["events"])
+    assert not any(item["kind"] != "unlinked_evidence" for item in state["review_items"])
+
+
+def test_fixture_is_excluded_outside_demo_mode(client, demo_record, monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr("app.timeline.settings", lambda: settings().model_copy(update={"demo_enabled": False}))
+    login(client)
+    assert analyze(client, demo_record)["mode"] == "extractive"
