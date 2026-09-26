@@ -1,0 +1,50 @@
+{
+  "events": [
+    {
+      "title": "Reunión presencial con el supervisor",
+      "description": "La persona describe una reunión en la que recibió un comentario que la incomodó.",
+      "date_kind": "approximate",
+      "event_date": null,
+      "approximate_date": "mediados de septiembre",
+      "source_ids": [],
+      "support_quotes": ["A mediados de septiembre tuve una reunión con mi supervisor.", "Me hizo un comentario que me incomodó."]
+    },
+    {
+      "title": "Mensajes recibidos fuera del horario laboral",
+      "description": "Dos mensajes del supervisor recibidos por la noche, fuera del horario laboral.",
+      "date_kind": "exact",
+      "event_date": "2026-09-16",
+      "event_time": "22:43",
+      "approximate_date": null,
+      "source_ids": [],
+      "support_quotes": ["Miércoles 16/09/2026.", "22:43 — Juan X.: «¿Sigues despierta?"]
+    },
+    {
+      "title": "Correo sobre la evaluación de desempeño",
+      "description": "Correo del supervisor que propone revisar puntos de la evaluación “como conversamos esta semana”.",
+      "date_kind": "exact",
+      "event_date": "2026-09-17",
+      "event_time": "09:12",
+      "approximate_date": null,
+      "source_ids": [],
+      "support_quotes": ["Fecha: 17/09/2026 09:12", "Como conversamos esta semana, revisaremos algunos puntos de tu evaluación de desempeño."]
+    }
+  ],
+  "review_items": [
+    {
+      "kind": "date_inconsistency",
+      "message": "El relato menciona “martes 15”, pero la captura corresponde al miércoles 16. Elige qué información conservar.",
+      "action_label": "Usar 16 sep",
+      "resolution_note": "Fecha conservada según captura_01.png",
+      "source_ids": [],
+      "support_quotes": ["El martes 15 por la noche recibí mensajes suyos fuera del horario laboral", "Miércoles 16/09/2026."]
+    },
+    {
+      "kind": "possible_relation",
+      "message": "correo_01.pdf dice “como conversamos esta semana”, lo que podría referirse a la reunión presencial.",
+      "action_label": "Relacionar",
+      "source_ids": [],
+      "support_quotes": ["Como conversamos esta semana", "A mediados de septiembre tuve una reunión con mi supervisor."]
+    }
+  ]
+}
