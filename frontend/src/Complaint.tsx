@@ -174,10 +174,11 @@ export function Share({recordId,onExpired}:Props) {
     return () => {active=false}
   },[recordId,onExpired])
   useEffect(() => {
-    if(!draft || events)return
+    if(!draft || !files || events)return
     setEvents(new Set(draft.fields.facts.events.map(f=>f.event_id)))
-    setChosen(new Set(draft.fields.evidence.file_ids))
-  },[draft,events])
+    // Preselect only files that still exist: a deleted file would be sent invisibly and rejected.
+    setChosen(new Set(draft.fields.evidence.file_ids.filter(id=>files.some(file=>file.id===id))))
+  },[draft,files,events])
   function toggle(set:Set<string>, id:string, apply:(s:Set<string>)=>void) {
     const next = new Set(set); if(next.has(id))next.delete(id); else next.add(id); apply(next); setPreview(false)
   }

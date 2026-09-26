@@ -86,3 +86,15 @@ test('compartir no permite enviar un borrador desactualizado', async () => {
   expect(screen.queryByText('Revisar lo que verá la organización')).toBeNull()
   expect(screen.getByRole('button', { name: 'Actualizar borrador' })).toBeInTheDocument()
 }, 20000)
+
+test('compartir ignora archivos del borrador que ya no existen', async () => {
+  let submitted: Record<string, unknown> | null = null
+  const current = { ...state, draft: { ...draft, fields: { ...fields, evidence: { file_ids: ['f1', 'borrado'] } } } }
+  vi.stubGlobal('fetch', shareFetch(current, body => { submitted = body }))
+  render(<Share recordId="r1" onExpired={vi.fn()} />)
+  const user = userEvent.setup()
+  await user.click(await screen.findByText('Revisar lo que verá la organización', {}, { timeout: 4000 }))
+  await user.click(await screen.findByText('Confirmar y enviar'))
+  await screen.findByText('Caso V-001')
+  expect(submitted).toMatchObject({ file_ids: ['f1'] })
+}, 20000)
