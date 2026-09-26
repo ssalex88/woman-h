@@ -68,3 +68,21 @@ test('compartir separa lo que se envía de lo que sigue privado y envía solo lo
   expect(await screen.findByRole('heading', { name: 'Caso V-001' })).toBeInTheDocument()
   expect(submitted).toEqual({ draft_revision: 2, event_ids: ['e2'], file_ids: ['f1'], institution_id: 'org-1' })
 }, 20000)
+
+function shareFetch(current: object, onSubmit: (body: Record<string, unknown>) => void = () => {}) {
+  return vi.fn(async (url: string, options: RequestInit = {}) => {
+    if (url.endsWith('/files')) return Response.json({ items: [{ id: 'f1', filename: 'captura_01.png' }] })
+    if (url.endsWith('/organizations')) return Response.json([{ id: 'org-1', name: 'Institución Aurora' }])
+    if (url.endsWith('/complaint/review')) return Response.json({ ...current, draft: { ...(current as typeof state).draft, reviewed: true } })
+    if (url.endsWith('/submit')) { onSubmit(JSON.parse(options.body as string)); return Response.json({ case_id: 'V-001', institution_name: 'Aurora', shared: { events: 2, files: 1 } }, { status: 201 }) }
+    return Response.json(current)
+  })
+}
+
+test('compartir no permite enviar un borrador desactualizado', async () => {
+  vi.stubGlobal('fetch', shareFetch({ ...state, draft: { ...draft, stale: true } }))
+  render(<Share recordId="r1" onExpired={vi.fn()} />)
+  expect(await screen.findByRole('alert', {}, { timeout: 4000 })).toHaveTextContent('Tu cronología cambió')
+  expect(screen.queryByText('Revisar lo que verá la organización')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Actualizar borrador' })).toBeInTheDocument()
+}, 20000)

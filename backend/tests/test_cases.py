@@ -194,3 +194,18 @@ def test_case_numbers_are_sequential_per_institution(client, demo_record):
     assert submit(client, demo_record, draft, events, []).json()["case_id"] == "V-001"
     assert submit(client, demo_record, draft, events, []).json()["case_id"] == "V-002"
     assert submit(client, demo_record, draft, events, [], BRISA).json()["case_id"] == "V-001"
+
+
+def test_submit_rejects_draft_made_from_an_outdated_timeline(client, demo_record):
+    login(client)
+    draft = reviewed_draft(client, demo_record)
+    timeline = client.get(f"/api/records/{demo_record}/timeline").json()
+    event = timeline["events"][0]
+    changed = client.put(f"/api/records/{demo_record}/timeline/events/{event['id']}", json={
+        **{key: event[key] for key in CONTENT}, "revision": timeline["revision"], "status": "discarded"})
+    assert changed.status_code == 200
+    assert client.get(f"/api/records/{demo_record}/complaint").json()["draft"]["stale"] is True
+    response = submit(client, demo_record, draft, [event["id"]], [])
+    assert response.status_code == 409
+    with SessionLocal() as db:
+        assert db.scalar(select(InstitutionalCase)) is None

@@ -211,7 +211,9 @@ export function Share({recordId,onExpired}:Props) {
       <p>Tener algo guardado en VERA no significa haberlo denunciado. Solo lo que marques llegará a la organización.</p></section>
     {(error || draftError) && <p role="alert" className="error">{error || draftError}</p>}
     {loading ? !(error || draftError) && <p role="status">Preparando la selección…</p> : !draft ? <div className="notice"><p>Primero prepara tu borrador.</p>
-      <button onClick={()=>navigate(`registros/${recordId}/queja`)}>Preparar reporte</button></div> : <>
+      <button onClick={()=>navigate(`registros/${recordId}/queja`)}>Preparar reporte</button></div> :
+    draft.stale || !state.timeline_confirmed ? <div className="notice" role="alert"><p>Tu cronología cambió después de preparar el borrador. Confírmala y actualiza el borrador antes de compartir: así no se envía nada que hayas descartado.</p>
+      <button onClick={()=>navigate(`registros/${recordId}/${state.timeline_confirmed ? 'queja' : 'cronologia'}`)}>{state.timeline_confirmed ? 'Actualizar borrador' : 'Revisar cronología'}</button></div> : <>
       <div className="share-grid">
         <section className="card" aria-labelledby="share-heading"><h2 id="share-heading">Se compartirá</h2>
           <fieldset disabled={busy||sending}><legend className="eyebrow">HECHOS</legend>

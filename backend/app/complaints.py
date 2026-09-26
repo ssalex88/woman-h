@@ -249,6 +249,10 @@ def submit(record_id: UUID, data: Submission, user: User = Depends(current_user)
         raise HTTPException(409, "El borrador cambió. Revísalo nuevamente antes de enviar")
     if draft.reviewed_at is None:
         raise HTTPException(422, "Revisa lo que verá la organización antes de enviar")
+    timeline = db.get(Timeline, str(record_id))
+    if timeline is None or timeline.confirmed_revision != timeline.revision or draft.timeline_revision != timeline.revision:
+        # Never send facts the person discarded or changed after preparing the draft.
+        raise HTTPException(409, "Tu cronología cambió después de preparar el borrador. Confírmala y actualiza el borrador antes de enviar")
     facts = {fact['event_id']: fact for fact in draft.fields_json['facts']['events']}
     if len(set(data.event_ids)) != len(data.event_ids) or not set(data.event_ids) <= set(facts):
         raise HTTPException(422, "Solo puedes compartir hechos de tu borrador")
