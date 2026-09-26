@@ -153,3 +153,26 @@ def test_fixture_is_excluded_outside_demo_mode(client, demo_record, monkeypatch)
     monkeypatch.setattr("app.timeline.settings", lambda: settings().model_copy(update={"demo_enabled": False}))
     login(client)
     assert analyze(client, demo_record)["mode"] == "extractive"
+
+
+def test_demo_seed_repairs_a_partially_created_case(store, monkeypatch):
+    import app.files
+    from sqlalchemy import select
+    from app.db import SessionLocal
+    from app.models import RecordFile
+    from app.seed import seed_demo_case
+    real = app.files.persist_file
+
+    def failing(db, store, record_id, filename, data, meta):
+        if filename == "correo_01.pdf":
+            raise RuntimeError("almacenamiento caído")
+        return real(db, store, record_id, filename, data, meta)
+    monkeypatch.setattr(app.files, "persist_file", failing)
+    with pytest.raises(RuntimeError):
+        seed_demo_case()
+    monkeypatch.setattr(app.files, "persist_file", real)
+    record = seed_demo_case()
+    seed_demo_case()
+    with SessionLocal() as db:
+        names = sorted(db.scalars(select(RecordFile.filename).where(RecordFile.record_id == record)))
+    assert names == ["captura_01.png", "captura_02.png", "correo_01.pdf"]
